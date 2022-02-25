@@ -37,15 +37,21 @@ class GymEnv:
 
     def close(self):
         self.env.close()
+    
+    def seed(self, v):
+        self.env.seed(v)
 
 parallel_num = 1
-env = gym.make('sumo-ants-v0')
+env = gym.make('run-to-goal-humans-v0')
 env = GymEnv(env)
-env = DummyVecEnv([lambda : GymEnv(env) for _ in range(parallel_num)])
+env.seed(0)
+# env = DummyVecEnv([lambda : GymEnv(env) for _ in range(parallel_num)])
 
 obs = env.reset()
-actions = np.array([[env.action_space.sample() for _ in range(env.num_agents)] for _ in range(parallel_num)])
+env.render()
+actions = [np.zeros((env.action_space.shape[0],)) for _ in range(env.num_agents)]
 while True:
     obs, reward, done, info = env.step(actions)
+    env.render()
     if np.all(done):
         break

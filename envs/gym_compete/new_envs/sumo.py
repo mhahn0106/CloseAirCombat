@@ -85,7 +85,7 @@ class SumoEnv(MultiAgentEnv):
             done = True
             for j in range(self.num_agents):
                 if fallen[j]:
-                    logging.debug('Agent', j, 'fallen')
+                    logging.debug(f'Agent{j}, fallen')
                     goal_rews[j] -= self.GOAL_REWARD
                 elif self.agent_contacts:
                     goal_rews[j] += self.GOAL_REWARD
@@ -95,7 +95,7 @@ class SumoEnv(MultiAgentEnv):
             done = True
             for j in range(self.num_agents):
                 if past_arena[j]:
-                    logging.debug('Agent', j, 'past arena')
+                    logging.debug(f'Agent{j}, past arena')
                     goal_rews[j] -= self.GOAL_REWARD
                 elif self.agent_contacts:
                     goal_rews[j] += self.GOAL_REWARD

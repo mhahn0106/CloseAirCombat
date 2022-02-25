@@ -1,6 +1,7 @@
 # ignore files
 test.py
 results
+render_results
 *.npy
 *.acmi
 

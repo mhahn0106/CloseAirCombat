@@ -166,7 +166,7 @@ class Agent(object):
     def get_body_com(self, body_name):
         assert self._env_init, "Env reference is not set"
         idx = self.body_ids[self.body_names.index(self.scope + '/' + body_name)]
-        return self.env.data.com_subtree[idx]
+        return self.env.data.subtree_com[idx]
 
     def get_cfrc_ext(self):
         assert self._env_init, "Env reference is not set"

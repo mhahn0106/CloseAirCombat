@@ -56,7 +56,6 @@ class GymRunner(Runner):
 
             logging.info("\n Load selfplay opponents: Algo {}, num_opponents {}.\n"
                          .format(self.all_args.selfplay_algorithm, self.all_args.n_choose_opponents))
-
         if self.model_dir is not None:
             self.restore()
 
@@ -277,6 +276,64 @@ class GymRunner(Runner):
         if self.use_selfplay:
             self.reset_opponent()
         logging.info("...End evaluation")
+
+    @torch.no_grad()
+    def render(self):
+        logging.info("\nStart render ...")
+        self.render_opponent_index = self.all_args.render_opponent_index
+        render_episode_rewards = 0
+        render_obs = self.envs.reset()
+        render_masks = np.ones(shape = (self.num_agents//2, 1), dtype=np.float32)
+        render_rnn_states = np.zeros(shape = (self.num_agents//2, 1, 128), dtype=np.float32)
+        self.envs.render(mode='human')
+        if self.use_selfplay:
+            policy_idx = self.render_opponent_index
+            self.eval_opponent_policy.actor.load_state_dict(torch.load(str(self.model_dir) + f'/actor_{policy_idx}.pt'))
+            self.eval_opponent_policy.prep_rollout()
+            # reset obs/rnn/mask
+            render_obs = self.envs.reset()
+            render_masks = np.ones_like(render_masks, dtype=np.float32)
+            render_rnn_states = np.zeros_like(render_rnn_states, dtype=np.float32)
+            render_opponent_obs = render_obs[self.num_agents // 2:, ...]
+            render_obs = render_obs[:self.num_agents // 2, ...]
+            render_opponent_masks = np.ones_like(render_masks, dtype=np.float32)
+            render_opponent_rnn_states = np.zeros_like(render_rnn_states, dtype=np.float32)
+        while True:
+            self.policy.prep_rollout()
+            render_actions, render_rnn_states = self.policy.act(render_obs,
+                                                                render_rnn_states,
+                                                                render_masks,
+                                                                deterministic=True)
+            render_actions = _t2n(render_actions)
+            render_rnn_states = _t2n(render_rnn_states)
+            
+            # [Selfplay] get actions of opponent policy
+            if self.use_selfplay:
+                render_opponent_actions, render_opponent_rnn_states \
+                    = self.eval_opponent_policy.act(render_opponent_obs,
+                                                    render_opponent_rnn_states,
+                                                    render_opponent_masks,
+                                                    deterministic=True)
+                render_opponent_actions = _t2n(render_opponent_actions)
+                render_opponent_rnn_states = _t2n(render_opponent_rnn_states)
+                render_actions = np.concatenate((render_actions, render_opponent_actions), axis=0)
+            # Obser reward and next obs
+            render_obs, render_rewards, render_dones, render_infos = self.envs.step(render_actions)
+            if self.use_selfplay:
+                render_rewards = render_rewards[:self.num_agents // 2, ...]
+            render_episode_rewards += render_rewards
+            self.envs.render(mode='human')
+            time.sleep(0.01)
+            if render_dones.all():
+                break
+            if self.use_selfplay:
+                render_opponent_obs = render_obs[self.num_agents // 2:, ...]
+                render_obs = render_obs[:self.num_agents // 2, ...]
+
+        render_infos = {}
+        render_infos['render_episode_reward'] = render_episode_rewards
+        logging.info("render episode reward of agent: " + str(render_infos['render_episode_reward']))
+
 
     def save(self, episode):
         policy_actor_state_dict = self.policy.actor.state_dict()

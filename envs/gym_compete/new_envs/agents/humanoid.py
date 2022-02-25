@@ -1,10 +1,11 @@
 from .agent import Agent
 from gym.spaces import Box
 import numpy as np
+import os
 
 
 def mass_center(mass, xpos):
-    return (np.sum(mass * xpos, 0) / np.sum(mass))[0]
+    return (np.sum(mass @ xpos, 0) / np.sum(mass))
 
 
 class Humanoid(Agent):
